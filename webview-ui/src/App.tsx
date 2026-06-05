@@ -113,6 +113,8 @@ function App() {
     });
   }, []);
 
+  const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
+
   const handleSelectAgent = useCallback((id: number) => {
     transport.send({ type: 'focusAgent', id });
   }, []);
@@ -133,14 +135,16 @@ function App() {
   );
 
   const handleCloseAgent = useCallback((id: number) => {
+    setSelectedAgentId((prev) => (prev === id ? null : prev));
     transport.send({ type: 'closeAgent', id });
   }, []);
 
   const handleClick = useCallback((agentId: number) => {
-    // If clicked agent is a sub-agent, focus the parent's terminal instead
     const os = getOfficeState();
     const meta = os.subagentMeta.get(agentId);
     const focusId = meta ? meta.parentAgentId : agentId;
+    // Toggle selection for prompt input panel
+    setSelectedAgentId((prev) => (prev === focusId ? null : focusId));
     transport.send({ type: 'focusAgent', id: focusId });
   }, []);
 
@@ -324,15 +328,15 @@ function App() {
       </Modal>
 
       <AgentPromptInput
-        selectedAgentId={officeState.selectedAgentId}
+        selectedAgentId={selectedAgentId}
         agentStatus={
-          officeState.selectedAgentId !== null
-            ? (agentStatuses[officeState.selectedAgentId] as 'active' | 'waiting' | undefined)
+          selectedAgentId !== null
+            ? (agentStatuses[selectedAgentId] as 'active' | 'waiting' | undefined)
             : undefined
         }
         agentFolderName={
-          officeState.selectedAgentId !== null
-            ? officeState.characters.get(officeState.selectedAgentId)?.folderName
+          selectedAgentId !== null
+            ? officeState.characters.get(selectedAgentId)?.folderName
             : undefined
         }
       />
