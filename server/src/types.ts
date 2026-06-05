@@ -32,6 +32,8 @@ export interface AgentState {
   hookDelivered: boolean;
   /** True when agent has no transcript file (provider doesn't use JSONL). All state from hooks. */
   hooksOnly?: boolean;
+  /** Writable stdin of a headless child process (standalone mode only). */
+  stdinRef?: import('stream').Writable;
   /** Provider that created this agent (defaults to 'claude') */
   providerId?: string;
   /** Set when SessionEnd(reason=clear) fires; cleared when SessionStart(source=clear) reassigns */

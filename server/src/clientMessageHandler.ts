@@ -128,9 +128,14 @@ export function handleClientMessage(
     }
 
     case 'sendPrompt': {
-      // Standalone mode: agents are detached terminal processes — cannot receive stdin.
-      // VS Code adapter handles this via terminalRef.sendText() instead.
-      console.warn('[Pixel Agents] sendPrompt: not supported in standalone mode');
+      const agentId = msg.id as number;
+      const text = msg.text as string;
+      const agent = store.get(agentId);
+      if (agent?.stdinRef && !agent.stdinRef.destroyed) {
+        agent.stdinRef.write(text + '\n');
+      } else {
+        console.warn(`[Pixel Agents] sendPrompt: agent ${agentId} has no writable stdin`);
+      }
       break;
     }
 

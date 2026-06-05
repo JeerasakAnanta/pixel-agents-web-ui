@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { isBrowserRuntime } from '../runtime.js';
 import { transport } from '../transport/index.js';
 import { Button } from './ui/Button.js';
 
@@ -8,18 +7,24 @@ interface AgentPromptInputProps {
   selectedAgentId: number | null;
   agentStatus: 'active' | 'waiting' | undefined;
   agentFolderName: string | undefined;
+  /** True when the agent has at least one tool actively running (not done). */
+  agentHasActiveTools: boolean;
 }
 
 export function AgentPromptInput({
   selectedAgentId,
   agentStatus,
   agentFolderName,
+  agentHasActiveTools,
 }: AgentPromptInputProps) {
   const [text, setText] = useState('');
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const isWaiting = agentStatus === 'waiting';
-  const canSend = !isBrowserRuntime && isWaiting && text.trim().length > 0;
+  // isActive: explicitly waiting for a tool to finish (has running tools) OR
+  // the server sent an 'active' status (legacy/non-hook path).
+  const isActive = agentStatus === 'active' || agentHasActiveTools;
+  const canSend = !isActive && text.trim().length > 0;
 
   // Clear input and focus when a new agent is selected
   useEffect(() => {
@@ -47,91 +52,109 @@ export function AgentPromptInput({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      if (canSend) handleSend();
     }
   };
 
-  const label = agentFolderName ? `Agent: ${agentFolderName}` : `Agent #${selectedAgentId}`;
+  const label = agentFolderName ? agentFolderName : `Agent #${selectedAgentId}`;
 
-  let statusText: string;
-  if (isBrowserRuntime) {
-    statusText = 'Sending prompts requires VS Code extension';
-  } else if (agentStatus === 'active') {
-    statusText = 'Agent is working...';
-  } else if (agentStatus === 'waiting') {
-    statusText = 'Ready — type a message and press Enter';
+  let statusDot: string;
+  let statusMsg: string;
+  if (isActive) {
+    statusDot = '🟡';
+    statusMsg = 'Working…';
   } else {
-    statusText = 'Waiting for agent status...';
+    // Both 'waiting' (explicit hook signal) and unknown (fresh agent, between turns)
+    // are ready to receive a message.
+    statusDot = '🟢';
+    statusMsg = 'Ready — Enter to send';
   }
+
+  const inputBorder = !isActive ? 'var(--pixel-accent)' : 'var(--pixel-border)';
 
   return (
     <div
       className="absolute z-20 pixel-panel"
       style={{
-        bottom: '72px',
+        bottom: '80px',
         left: '50%',
         transform: 'translateX(-50%)',
-        width: '480px',
-        maxWidth: 'calc(100vw - 32px)',
-        padding: '10px',
+        width: '560px',
+        maxWidth: 'calc(100vw - 24px)',
+        padding: '12px',
         display: 'flex',
         flexDirection: 'column',
-        gap: '6px',
+        gap: '8px',
       }}
     >
+      {/* Header */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          fontSize: '10px',
-          color: 'var(--pixel-text-dim)',
-          letterSpacing: '0.05em',
+          fontSize: '11px',
+          letterSpacing: '0.06em',
         }}
       >
-        <span>{label.toUpperCase()}</span>
-        <span
-          style={{
-            color: isWaiting ? 'var(--pixel-accent)' : 'var(--pixel-text-dim)',
-          }}
-        >
-          {statusText}
+        <span style={{ color: 'var(--pixel-text)', fontWeight: 'bold' }}>
+          {label.toUpperCase()}
+        </span>
+        <span style={{ color: !isActive ? 'var(--pixel-accent)' : 'var(--pixel-text-dim)' }}>
+          {statusDot} {statusMsg}
         </span>
       </div>
 
-      <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-end' }}>
+      {/* Input row */}
+      <div style={{ display: 'flex', gap: '8px', alignItems: 'stretch' }}>
         <textarea
           ref={inputRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
-          disabled={!isWaiting || isBrowserRuntime}
+          disabled={isActive}
           placeholder={
-            isWaiting && !isBrowserRuntime
-              ? 'Type a message… (Enter to send, Shift+Enter for newline)'
-              : ''
+            isActive
+              ? 'Agent is working…'
+              : 'Type a message… Enter to send, Shift+Enter for newline'
           }
-          rows={2}
+          rows={3}
           style={{
             flex: 1,
             background: 'var(--pixel-bg-raised)',
-            border: `2px solid ${isWaiting && !isBrowserRuntime ? 'var(--pixel-accent)' : 'var(--pixel-border)'}`,
+            border: `2px solid ${inputBorder}`,
             color: 'var(--pixel-text)',
-            padding: '6px 8px',
-            fontSize: '12px',
-            resize: 'none',
+            padding: '8px 10px',
+            fontSize: '13px',
+            resize: 'vertical',
+            minHeight: '70px',
             outline: 'none',
-            opacity: isWaiting && !isBrowserRuntime ? 1 : 0.5,
+            opacity: isActive ? 0.45 : 1,
           }}
         />
-        <Button
-          variant="accent"
-          onClick={handleSend}
-          disabled={!canSend}
-          style={{ flexShrink: 0, height: '52px', opacity: canSend ? 1 : 0.4 }}
-        >
-          Send
-        </Button>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flexShrink: 0 }}>
+          <Button
+            variant="accent"
+            onClick={handleSend}
+            disabled={!canSend}
+            style={{ width: '80px', flex: 1, opacity: canSend ? 1 : 0.35 }}
+          >
+            Send
+          </Button>
+
+          {/* Close button */}
+          <Button
+            variant="default"
+            onClick={() => {
+              transport.send({ type: 'focusAgent', id: selectedAgentId });
+            }}
+            style={{ width: '80px', fontSize: '11px' }}
+            title="Focus terminal"
+          >
+            Terminal
+          </Button>
+        </div>
       </div>
     </div>
   );

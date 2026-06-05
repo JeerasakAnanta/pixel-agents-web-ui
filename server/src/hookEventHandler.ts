@@ -163,6 +163,12 @@ export class HookEventHandler {
         const agent = this.agents.get(existingAgentId);
         if (agent) {
           agent.hookDelivered = true;
+          // Claude just started (or resumed) — mark as waiting so the webview
+          // enables the prompt input for the first message.
+          if (!agent.isWaiting) {
+            agent.isWaiting = true;
+            this.agents.broadcast({ type: 'agentStatus', id: existingAgentId, status: 'waiting' });
+          }
         }
         if (debug)
           console.log(
@@ -175,6 +181,11 @@ export class HookEventHandler {
         if (agent.sessionId === event.session_id) {
           this.registerAgent(agent.sessionId, id);
           agent.hookDelivered = true;
+          // Same: mark waiting so webview enables prompt input immediately.
+          if (!agent.isWaiting) {
+            agent.isWaiting = true;
+            this.agents.broadcast({ type: 'agentStatus', id, status: 'waiting' });
+          }
           if (debug)
             console.log(
               `[Pixel Agents] Hook: Agent ${id} - SessionStart(source=${source}) auto-discovered`,

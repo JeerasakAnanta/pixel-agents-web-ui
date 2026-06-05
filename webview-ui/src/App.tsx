@@ -339,6 +339,11 @@ function App() {
             ? officeState.characters.get(selectedAgentId)?.folderName
             : undefined
         }
+        agentHasActiveTools={
+          selectedAgentId !== null
+            ? (agentTools[selectedAgentId] ?? []).some((t) => !t.done)
+            : false
+        }
       />
 
       <BottomToolbar
