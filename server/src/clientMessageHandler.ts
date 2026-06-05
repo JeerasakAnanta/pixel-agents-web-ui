@@ -138,6 +138,20 @@ export function handleClientMessage(
       break;
     }
 
+    case 'launchSwarm': {
+      if (runtime) {
+        const cwd = (msg.folderPath as string | undefined) ?? ctx.workspace ?? process.cwd();
+        const count = Math.max(2, Math.min(10, (msg.count as number) || 3));
+        for (let i = 0; i < count; i++) {
+          void spawnAgent(store, runtime, {
+            cwd,
+            bypassPermissions: msg.bypassPermissions as boolean | undefined,
+          });
+        }
+      }
+      break;
+    }
+
     case 'closeAgent': {
       const agentId = msg.id as number;
       const agent = store.get(agentId);

@@ -152,24 +152,30 @@ export class PixelAgentsViewProvider implements vscode.WebviewViewProvider {
     webviewView.webview.html = getWebviewContent(webviewView.webview, this.extensionUri);
 
     webviewView.webview.onDidReceiveMessage(async (message) => {
-      if (message.type === 'launchAgent') {
+      if (message.type === 'launchAgent' || message.type === 'launchSwarm') {
+        const count =
+          message.type === 'launchSwarm'
+            ? Math.max(2, Math.min(10, (message.count as number) || 3))
+            : 1;
         const prevAgentIds = new Set(this.store.keys());
-        await launchNewTerminal(
-          this.store.nextAgentId,
-          this.store.nextTerminalIndex,
-          this.store,
-          this.runtime.activeAgentId,
-          this.runtime.knownJsonlFiles,
-          this.runtime.fileWatchers,
-          this.runtime.pollingTimers,
-          this.runtime.waitingTimers,
-          this.runtime.permissionTimers,
-          this.runtime.jsonlPollTimers,
-          this.runtime.projectScanTimer,
-          () => this.store.persist(),
-          message.folderPath as string | undefined,
-          message.bypassPermissions as boolean | undefined,
-        );
+        for (let i = 0; i < count; i++) {
+          await launchNewTerminal(
+            this.store.nextAgentId,
+            this.store.nextTerminalIndex,
+            this.store,
+            this.runtime.activeAgentId,
+            this.runtime.knownJsonlFiles,
+            this.runtime.fileWatchers,
+            this.runtime.pollingTimers,
+            this.runtime.waitingTimers,
+            this.runtime.permissionTimers,
+            this.runtime.jsonlPollTimers,
+            this.runtime.projectScanTimer,
+            () => this.store.persist(),
+            message.folderPath as string | undefined,
+            message.bypassPermissions as boolean | undefined,
+          );
+        }
         // Register newly created agent(s) with hook handler
         for (const [id, agent] of this.store) {
           if (!prevAgentIds.has(id)) {

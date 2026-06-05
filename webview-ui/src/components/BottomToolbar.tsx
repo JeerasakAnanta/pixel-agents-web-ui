@@ -27,6 +27,7 @@ export function BottomToolbar({
   const [isBypassMenuOpen, setIsBypassMenuOpen] = useState(false);
   const folderPickerRef = useRef<HTMLDivElement>(null);
   const pendingBypassRef = useRef(false);
+
   // Close folder picker / bypass menu on outside click
   useEffect(() => {
     if (!isFolderPickerOpen && !isBypassMenuOpen) return;
@@ -43,6 +44,10 @@ export function BottomToolbar({
   const hasMultipleFolders = workspaceFolders.length > 1;
 
   const handleAgentClick = () => {
+    if (isBrowserRuntime) {
+      transport.send({ type: 'launchAgent' });
+      return;
+    }
     setIsBypassMenuOpen(false);
     pendingBypassRef.current = false;
     if (hasMultipleFolders) {
@@ -53,13 +58,13 @@ export function BottomToolbar({
   };
 
   const handleAgentHover = () => {
-    if (!isFolderPickerOpen) {
+    if (!isBrowserRuntime && !isFolderPickerOpen) {
       setIsBypassMenuOpen(true);
     }
   };
 
   const handleAgentLeave = () => {
-    if (!isFolderPickerOpen) {
+    if (!isBrowserRuntime && !isFolderPickerOpen) {
       setIsBypassMenuOpen(false);
     }
   };
@@ -83,43 +88,44 @@ export function BottomToolbar({
 
   return (
     <div className="absolute bottom-10 left-10 z-20 flex items-center gap-4 pixel-panel p-4">
-      {/* Hide + Agent in standalone browser mode (no terminal to interact with) */}
-      {!isBrowserRuntime && (
-        <div
-          ref={folderPickerRef}
-          className="relative"
-          onMouseEnter={handleAgentHover}
-          onMouseLeave={handleAgentLeave}
+      <div
+        ref={folderPickerRef}
+        className="relative"
+        onMouseEnter={handleAgentHover}
+        onMouseLeave={handleAgentLeave}
+      >
+        <Button
+          variant="accent"
+          onClick={handleAgentClick}
+          className={
+            isFolderPickerOpen || isBypassMenuOpen
+              ? 'bg-accent-bright'
+              : 'bg-accent hover:bg-accent-bright'
+          }
         >
-          <Button
-            variant="accent"
-            onClick={handleAgentClick}
-            className={
-              isFolderPickerOpen || isBypassMenuOpen
-                ? 'bg-accent-bright'
-                : 'bg-accent hover:bg-accent-bright'
-            }
-          >
-            + Agent
-          </Button>
-          <Dropdown isOpen={isBypassMenuOpen}>
-            <DropdownItem onClick={() => handleBypassSelect(true)}>
-              Skip permissions mode <span className="text-2xs text-warning">⚠</span>
-            </DropdownItem>
-          </Dropdown>
-          <Dropdown isOpen={isFolderPickerOpen} className="min-w-128">
-            {workspaceFolders.map((folder) => (
-              <DropdownItem
-                key={folder.path}
-                onClick={() => handleFolderSelect(folder)}
-                className="text-base"
-              >
-                {folder.name}
+          + Agent
+        </Button>
+        {!isBrowserRuntime && (
+          <>
+            <Dropdown isOpen={isBypassMenuOpen}>
+              <DropdownItem onClick={() => handleBypassSelect(true)}>
+                Skip permissions mode <span className="text-2xs text-warning">⚠</span>
               </DropdownItem>
-            ))}
-          </Dropdown>
-        </div>
-      )}
+            </Dropdown>
+            <Dropdown isOpen={isFolderPickerOpen} className="min-w-128">
+              {workspaceFolders.map((folder) => (
+                <DropdownItem
+                  key={folder.path}
+                  onClick={() => handleFolderSelect(folder)}
+                  className="text-base"
+                >
+                  {folder.name}
+                </DropdownItem>
+              ))}
+            </Dropdown>
+          </>
+        )}
+      </div>
       <Button
         variant={isEditMode ? 'active' : 'default'}
         onClick={onToggleEditMode}

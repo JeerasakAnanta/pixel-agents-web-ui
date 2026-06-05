@@ -38,6 +38,7 @@ export type ServerMessage =
 export type ClientMessage =
   | WebviewReady
   | LaunchAgent
+  | LaunchSwarm
   | FocusAgent
   | CloseAgent
   | SaveAgentSeats
@@ -269,6 +270,13 @@ export interface WebviewReady {
 
 export interface LaunchAgent {
   type: 'launchAgent';
+  folderPath?: string;
+  bypassPermissions?: boolean;
+}
+
+export interface LaunchSwarm {
+  type: 'launchSwarm';
+  count: number;
   folderPath?: string;
   bypassPermissions?: boolean;
 }

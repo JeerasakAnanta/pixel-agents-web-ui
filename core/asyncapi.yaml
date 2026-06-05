@@ -118,6 +118,7 @@ components:
       oneOf:
         - $ref: '#/components/schemas/WebviewReady'
         - $ref: '#/components/schemas/LaunchAgent'
+        - $ref: '#/components/schemas/LaunchSwarm'
         - $ref: '#/components/schemas/FocusAgent'
         - $ref: '#/components/schemas/CloseAgent'
         - $ref: '#/components/schemas/SaveAgentSeats'
@@ -597,6 +598,25 @@ components:
       properties:
         type:
           const: launchAgent
+        folderPath:
+          type: string
+          description: Workspace folder path (for multi-root workspaces).
+        bypassPermissions:
+          type: boolean
+
+    LaunchSwarm:
+      description: Spawn multiple Claude agents simultaneously.
+      type: object
+      additionalProperties: false
+      required: [type, count]
+      properties:
+        type:
+          const: launchSwarm
+        count:
+          type: integer
+          minimum: 2
+          maximum: 10
+          description: Number of agents to spawn.
         folderPath:
           type: string
           description: Workspace folder path (for multi-root workspaces).
