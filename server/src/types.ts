@@ -1,10 +1,10 @@
-import type * as vscode from 'vscode';
+import type { TerminalHandle } from '../../core/src/terminalAdapter.js';
 
 export interface AgentState {
   id: number;
   sessionId: string;
   /** Terminal reference — undefined for extension panel sessions */
-  terminalRef?: vscode.Terminal;
+  terminalRef?: TerminalHandle;
   /** Whether this agent was detected from an external source (VS Code extension panel, etc.) */
   isExternal: boolean;
   projectDir: string;

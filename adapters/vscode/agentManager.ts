@@ -434,7 +434,7 @@ export function restoreAgents(
           console.log(
             `[Pixel Agents] Terminal: Agent ${id} - removing restored agent, no data received`,
           );
-          agent.terminalRef?.dispose();
+          agent.terminalRef?.dispose?.();
           removeAgent(
             id,
             store,

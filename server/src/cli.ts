@@ -8,6 +8,7 @@
  * Each connecting WebSocket client receives the full state on webviewReady.
  */
 
+import * as childProcess from 'child_process';
 import * as path from 'path';
 
 import { AgentRuntime } from './agentRuntime.js';
@@ -20,7 +21,9 @@ import {
   loadWallTiles,
 } from './assetLoader.js';
 import type { AssetCache } from './clientMessageHandler.js';
+import { CliTerminalAdapter } from './cliTerminalAdapter.js';
 import { FileStateAdapter } from './fileStateAdapter.js';
+import { setTerminalAdapter } from './fileWatcher.js';
 import { claudeProvider, copyHookScript } from './providers/index.js';
 import { PixelAgentsServer } from './server.js';
 
@@ -29,10 +32,11 @@ import { PixelAgentsServer } from './server.js';
 interface CliArgs {
   port: number;
   host: string;
+  workspace: string;
 }
 
 function parseArgs(argv: string[]): CliArgs {
-  const args: CliArgs = { port: 3100, host: '127.0.0.1' };
+  const args: CliArgs = { port: 3100, host: '127.0.0.1', workspace: process.cwd() };
   for (let i = 0; i < argv.length; i++) {
     if ((argv[i] === '--port' || argv[i] === '-p') && argv[i + 1]) {
       args.port = parseInt(argv[i + 1], 10);
@@ -40,13 +44,17 @@ function parseArgs(argv: string[]): CliArgs {
     } else if (argv[i] === '--host' && argv[i + 1]) {
       args.host = argv[i + 1];
       i++;
+    } else if ((argv[i] === '--workspace' || argv[i] === '-w') && argv[i + 1]) {
+      args.workspace = argv[i + 1];
+      i++;
     } else if (argv[i] === '--help') {
       console.log(`Usage: pixel-agents [options]
 
 Options:
-  --port, -p <number>   Port to listen on (default: 3100)
-  --host <string>       Host to bind to (default: 127.0.0.1)
-  --help                Show this help message`);
+  --port, -p <number>      Port to listen on (default: 3100)
+  --host <string>          Host to bind to (default: 127.0.0.1)
+  --workspace, -w <path>   Working directory for new agents (default: current dir)
+  --help                   Show this help message`);
       process.exit(0);
     }
   }
@@ -89,6 +97,9 @@ async function main(): Promise<void> {
     // Create runtime first (before server.start, so we can pass it in)
     const runtime = new AgentRuntime(store, claudeProvider);
 
+    // Wire standalone terminal adapter (no-op — claude runs as detached child process)
+    setTerminalAdapter(new CliTerminalAdapter());
+
     // Wire hook events: HTTP POST -> runtime -> hookEventHandler -> agents
     server.onHookEvent((providerId, event) => {
       runtime.handleHookEvent(providerId, event);
@@ -120,6 +131,7 @@ async function main(): Promise<void> {
       port: args.port,
       staticDir,
       assetCache,
+      workspace: args.workspace,
       onSetHooksEnabled,
     });
     currentConfig = { port: config.port, token: config.token };
@@ -140,7 +152,8 @@ async function main(): Promise<void> {
     }
 
     // Start scanning for external sessions (Claude running in user's terminal)
-    const cwd = process.cwd();
+    const cwd = args.workspace;
+    console.log(`[Pixel Agents] Workspace: ${cwd}`);
     const dirs = claudeProvider.getSessionDirs?.(cwd);
     if (dirs && dirs[0]) {
       const projectDir = dirs[0];
@@ -150,7 +163,13 @@ async function main(): Promise<void> {
       runtime.startStaleCheck();
     }
 
-    console.log(`\n  Pixel Agents server running at http://${args.host}:${config.port}\n`);
+    const url = `http://127.0.0.1:${config.port}`;
+    console.log(`\n  Pixel Agents server running at ${url}\n`);
+
+    // Auto-open browser
+    const opener =
+      process.platform === 'win32' ? 'start' : process.platform === 'darwin' ? 'open' : 'xdg-open';
+    childProcess.exec(`${opener} ${url}`);
 
     // ── Graceful shutdown ──
     function shutdown(): void {

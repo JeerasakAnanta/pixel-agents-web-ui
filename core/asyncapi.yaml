@@ -719,13 +719,16 @@ components:
           const: exportLayout
 
     ImportLayout:
-      description: Trigger layout import via host-native open dialog.
+      description: Trigger layout import. Browser mode includes parsed layout JSON; VS Code mode omits it and opens a native dialog.
       type: object
       additionalProperties: false
       required: [type]
       properties:
         type:
           const: importLayout
+        layout:
+          type: object
+          description: Pre-parsed layout JSON (browser mode only)
 
     OpenSessionsFolder:
       description: Open ~/.claude/projects in the OS file manager.

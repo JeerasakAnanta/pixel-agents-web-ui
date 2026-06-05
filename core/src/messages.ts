@@ -334,6 +334,7 @@ export interface ExportLayout {
 
 export interface ImportLayout {
   type: 'importLayout';
+  layout?: Record<string, any>;
 }
 
 export interface OpenSessionsFolder {

@@ -1,9 +1,12 @@
+import * as fs from 'fs';
+
 import type { AgentRuntime } from './agentRuntime.js';
 import type { AgentStateStore } from './agentStateStore.js';
 import type { LoadedAssets, LoadedCharacterSprites } from './assetLoader.js';
 import { readConfig, writeConfig } from './configPersistence.js';
 import { readLayoutFromFile, writeLayoutToFile } from './layoutPersistence.js';
 import { claudeProvider } from './providers/index.js';
+import { spawnAgent } from './spawnAgent.js';
 
 type WsSend = (message: Record<string, unknown>) => void;
 
@@ -23,6 +26,8 @@ export interface ClientMessageContext {
   store: AgentStateStore;
   runtime?: AgentRuntime;
   cache: AssetCache | null;
+  /** Default working directory for new agents (set via --workspace CLI flag) */
+  workspace?: string;
   /** Install/uninstall hooks side effect. Needs server url+token known only to cli.ts. */
   onSetHooksEnabled?: SetHooksEnabledSideEffect;
 }
@@ -122,9 +127,80 @@ export function handleClientMessage(
       break;
     }
 
+    case 'launchAgent': {
+      if (runtime) {
+        const cwd = (msg.folderPath as string | undefined) ?? ctx.workspace ?? process.cwd();
+        void spawnAgent(store, runtime, {
+          cwd,
+          bypassPermissions: msg.bypassPermissions as boolean | undefined,
+        });
+      }
+      break;
+    }
+
+    case 'closeAgent': {
+      const agentId = msg.id as number;
+      const agent = store.get(agentId);
+      if (agent && runtime) {
+        runtime.dismissalTracker.dismiss(agent.jsonlFile);
+        runtime.removeAgent(agentId);
+      }
+      break;
+    }
+
+    case 'focusAgent':
+      // no-op: no terminal to focus in standalone mode
+      break;
+
+    case 'requestDiagnostics': {
+      const diagnostics: Array<Record<string, unknown>> = [];
+      for (const [, agent] of store) {
+        let jsonlExists = false;
+        let fileSize = 0;
+        try {
+          const s = fs.statSync(agent.jsonlFile);
+          jsonlExists = true;
+          fileSize = s.size;
+        } catch {
+          /* file missing */
+        }
+        diagnostics.push({
+          id: agent.id,
+          projectDir: agent.projectDir,
+          projectDirExists: fs.existsSync(agent.projectDir),
+          jsonlFile: agent.jsonlFile,
+          jsonlExists,
+          fileSize,
+          fileOffset: agent.fileOffset,
+          lastDataAt: agent.lastDataAt,
+          linesProcessed: agent.linesProcessed,
+        });
+      }
+      send({ type: 'agentDiagnostics', agents: diagnostics });
+      break;
+    }
+
+    case 'exportLayout': {
+      const layout = readLayoutFromFile();
+      if (layout) send({ type: 'layoutExportData', json: JSON.stringify(layout, null, 2) });
+      break;
+    }
+
+    case 'importLayout': {
+      if (msg.layout) {
+        writeLayoutToFile(msg.layout as Record<string, unknown>);
+        send({ type: 'layoutLoaded', layout: msg.layout });
+      }
+      break;
+    }
+
+    case 'openSessionsFolder': {
+      const dirs = claudeProvider.getSessionDirs!(process.cwd());
+      send({ type: 'sessionsFolder', path: dirs[0] ?? process.cwd() });
+      break;
+    }
+
     default:
-      // focusAgent, exportLayout, importLayout
-      // require IDE-specific handling (not yet implemented for standalone)
       break;
   }
 }

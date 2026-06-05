@@ -4,6 +4,12 @@
  */
 export interface TerminalHandle {
   name: string;
+  /** VS Code-specific: bring terminal to front */
+  show?(): void;
+  /** VS Code-specific: close/dispose the terminal */
+  dispose?(): void;
+  /** VS Code-specific: defined when terminal has exited */
+  exitStatus?: unknown;
 }
 
 /**

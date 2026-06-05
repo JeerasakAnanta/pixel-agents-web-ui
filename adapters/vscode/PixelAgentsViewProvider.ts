@@ -180,12 +180,12 @@ export class PixelAgentsViewProvider implements vscode.WebviewViewProvider {
         const agent = this.store.get(message.id);
         if (agent) {
           if (agent.terminalRef) {
-            agent.terminalRef.show();
+            agent.terminalRef.show?.();
           } else if (agent.leadAgentId !== undefined) {
             // Teammate (tmux): focus the lead's terminal instead
             const lead = this.store.get(agent.leadAgentId);
             if (lead?.terminalRef) {
-              lead.terminalRef.show();
+              lead.terminalRef.show?.();
             }
           }
         }
@@ -193,7 +193,7 @@ export class PixelAgentsViewProvider implements vscode.WebviewViewProvider {
         const agent = this.store.get(message.id);
         if (agent) {
           if (agent.terminalRef) {
-            agent.terminalRef.dispose();
+            agent.terminalRef.dispose?.();
           } else {
             // External agent -- remove from tracking and dismiss the file
             // so the external scanner doesn't re-adopt it

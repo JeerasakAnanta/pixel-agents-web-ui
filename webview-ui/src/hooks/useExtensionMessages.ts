@@ -510,6 +510,16 @@ export function useExtensionMessages(
       } else if (msg.type === 'agentTokenUsage') {
         const id = msg.id as number;
         os.setAgentTokens(id, msg.inputTokens as number, msg.outputTokens as number);
+      } else if (msg.type === 'layoutExportData') {
+        const blob = new Blob([msg.json as string], { type: 'application/json' });
+        const a = Object.assign(document.createElement('a'), {
+          href: URL.createObjectURL(blob),
+          download: 'pixel-agents-layout.json',
+        });
+        a.click();
+        URL.revokeObjectURL(a.href);
+      } else if (msg.type === 'sessionsFolder') {
+        alert(`Sessions folder:\n${msg.path as string}`);
       }
     };
     const unsubscribe = transport.onMessage(handler);

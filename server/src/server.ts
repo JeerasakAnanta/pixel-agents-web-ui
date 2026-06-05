@@ -61,6 +61,7 @@ export class PixelAgentsServer {
     port?: number;
     staticDir?: string;
     assetCache?: AssetCache;
+    workspace?: string;
     onSetHooksEnabled?: SetHooksEnabledSideEffect;
   }): Promise<ServerConfig> {
     // Check if another instance already has a server running
@@ -89,6 +90,7 @@ export class PixelAgentsServer {
       assetCache: options?.assetCache,
       onHookEvent: (providerId, event) => this.callback?.(providerId, event),
       onSetHooksEnabled: options?.onSetHooksEnabled,
+      workspace: options?.workspace,
     });
 
     this.app = app;

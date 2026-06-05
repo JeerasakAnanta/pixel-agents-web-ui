@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import { isSoundEnabled, setSoundEnabled } from '../notificationSound.js';
+import { isBrowserRuntime } from '../runtime.js';
 import { transport } from '../transport/index.js';
 import { Button } from './ui/Button.js';
 import { Checkbox } from './ui/Checkbox.js';
@@ -56,7 +57,28 @@ export function SettingsModal({
       </MenuItem>
       <MenuItem
         onClick={() => {
-          transport.send({ type: 'importLayout' });
+          if (isBrowserRuntime) {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = () => {
+              const file = input.files?.[0];
+              if (!file) return;
+              const reader = new FileReader();
+              reader.onload = () => {
+                try {
+                  const layout = JSON.parse(reader.result as string);
+                  transport.send({ type: 'importLayout', layout });
+                } catch {
+                  alert('Invalid JSON file');
+                }
+              };
+              reader.readAsText(file);
+            };
+            input.click();
+          } else {
+            transport.send({ type: 'importLayout' });
+          }
           onClose();
         }}
       >

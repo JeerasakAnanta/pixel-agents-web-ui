@@ -20,13 +20,12 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
-import type * as vscode from 'vscode';
-
-const debug = process.env.PIXEL_AGENTS_DEBUG !== '0';
 
 import type { HookProvider } from '../../core/src/provider.js';
 import type { TeamProvider } from '../../core/src/teamProvider.js';
-import type { ITerminalAdapter } from '../../core/src/terminalAdapter.js';
+import type { ITerminalAdapter, TerminalHandle } from '../../core/src/terminalAdapter.js';
+
+const debug = process.env.PIXEL_AGENTS_DEBUG !== '0';
 import type { AgentStateStore } from './agentStateStore.js';
 import {
   CLEAR_IDLE_THRESHOLD_MS,
@@ -387,7 +386,7 @@ export function scanForNewJsonlFiles(
     // Try to adopt the focused terminal (only if it's a Claude-named terminal).
     // Cast to vscode.Terminal because the adapter returns the real object at runtime;
     // the TerminalHandle type is the minimal interface for the adapter contract.
-    const activeTerminal = terminalAdapter?.activeTerminal() as vscode.Terminal | undefined;
+    const activeTerminal = terminalAdapter?.activeTerminal();
     if (
       activeTerminal &&
       hookProvider?.terminalNamePrefix &&
@@ -419,7 +418,7 @@ export function scanForNewJsonlFiles(
         // Active terminal is owned -- scan for untracked Claude-named terminals.
         // Only adopt terminals with TERMINAL_NAME_PREFIX to avoid grabbing
         // pre-existing shells ("zsh", "bash") for /clear files.
-        for (const terminal of (terminalAdapter?.allTerminals() ?? []) as vscode.Terminal[]) {
+        for (const terminal of terminalAdapter?.allTerminals() ?? []) {
           if (
             !hookProvider?.terminalNamePrefix ||
             !terminal.name.startsWith(hookProvider.terminalNamePrefix)
@@ -466,7 +465,7 @@ export function scanForNewJsonlFiles(
 }
 
 function adoptTerminalForFile(
-  terminal: vscode.Terminal,
+  terminal: TerminalHandle,
   jsonlFile: string,
   projectDir: string,
   nextAgentIdRef: { current: number },
