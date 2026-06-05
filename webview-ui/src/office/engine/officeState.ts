@@ -260,6 +260,10 @@ export class OfficeState {
     return { palette, hueShift };
   }
 
+  hasAgent(id: number): boolean {
+    return this.characters.has(id);
+  }
+
   addAgent(
     id: number,
     preferredPalette?: number,
