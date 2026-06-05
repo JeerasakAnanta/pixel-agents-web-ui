@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { toMajorMinor } from './changelogData.js';
+import { AgentPromptInput } from './components/AgentPromptInput.js';
 import { BottomToolbar } from './components/BottomToolbar.js';
 import { ChangelogModal } from './components/ChangelogModal.js';
 import { DebugView } from './components/DebugView.js';
@@ -321,6 +322,20 @@ function App() {
           </p>
         </div>
       </Modal>
+
+      <AgentPromptInput
+        selectedAgentId={officeState.selectedAgentId}
+        agentStatus={
+          officeState.selectedAgentId !== null
+            ? (agentStatuses[officeState.selectedAgentId] as 'active' | 'waiting' | undefined)
+            : undefined
+        }
+        agentFolderName={
+          officeState.selectedAgentId !== null
+            ? officeState.characters.get(officeState.selectedAgentId)?.folderName
+            : undefined
+        }
+      />
 
       <BottomToolbar
         isEditMode={editor.isEditMode}

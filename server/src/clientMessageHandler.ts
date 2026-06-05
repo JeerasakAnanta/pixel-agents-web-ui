@@ -127,6 +127,13 @@ export function handleClientMessage(
       break;
     }
 
+    case 'sendPrompt': {
+      // Standalone mode: agents are detached terminal processes — cannot receive stdin.
+      // VS Code adapter handles this via terminalRef.sendText() instead.
+      console.warn('[Pixel Agents] sendPrompt: not supported in standalone mode');
+      break;
+    }
+
     case 'launchAgent': {
       if (runtime) {
         const cwd = (msg.folderPath as string | undefined) ?? ctx.workspace ?? process.cwd();

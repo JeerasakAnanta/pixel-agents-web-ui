@@ -119,6 +119,7 @@ components:
         - $ref: '#/components/schemas/WebviewReady'
         - $ref: '#/components/schemas/LaunchAgent'
         - $ref: '#/components/schemas/LaunchSwarm'
+        - $ref: '#/components/schemas/SendPrompt'
         - $ref: '#/components/schemas/FocusAgent'
         - $ref: '#/components/schemas/CloseAgent'
         - $ref: '#/components/schemas/SaveAgentSeats'
@@ -622,6 +623,21 @@ components:
           description: Workspace folder path (for multi-root workspaces).
         bypassPermissions:
           type: boolean
+
+    SendPrompt:
+      description: Send a text prompt to a specific agent's terminal.
+      type: object
+      additionalProperties: false
+      required: [type, id, text]
+      properties:
+        type:
+          const: sendPrompt
+        id:
+          type: integer
+          description: Agent ID to send the prompt to.
+        text:
+          type: string
+          description: The prompt text to send.
 
     FocusAgent:
       description: Focus an agent's terminal.

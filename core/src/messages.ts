@@ -39,6 +39,7 @@ export type ClientMessage =
   | WebviewReady
   | LaunchAgent
   | LaunchSwarm
+  | SendPrompt
   | FocusAgent
   | CloseAgent
   | SaveAgentSeats
@@ -279,6 +280,12 @@ export interface LaunchSwarm {
   count: number;
   folderPath?: string;
   bypassPermissions?: boolean;
+}
+
+export interface SendPrompt {
+  type: 'sendPrompt';
+  id: number;
+  text: string;
 }
 
 export interface FocusAgent {
