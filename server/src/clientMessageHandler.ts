@@ -138,6 +138,20 @@ export function handleClientMessage(
       break;
     }
 
+    case 'launchSwarm': {
+      if (runtime) {
+        const cwd = (msg.folderPath as string | undefined) ?? ctx.workspace ?? process.cwd();
+        const count = Math.max(2, Math.min(10, (msg.count as number) || 3));
+        for (let i = 0; i < count; i++) {
+          void spawnAgent(store, runtime, {
+            cwd,
+            bypassPermissions: msg.bypassPermissions as boolean | undefined,
+          });
+        }
+      }
+      break;
+    }
+
     case 'closeAgent': {
       const agentId = msg.id as number;
       const agent = store.get(agentId);
@@ -242,7 +256,7 @@ function handleWebviewReady(send: WsSend, ctx: ClientMessageContext): void {
 
   // 4. Settings (from adapter, with sensible defaults when adapter is absent)
   const cfg = readConfig();
-  const watchAllSessions = adapter?.getSetting(KEY_WATCH_ALL_SESSIONS, false) ?? false;
+  const watchAllSessions = adapter?.getSetting(KEY_WATCH_ALL_SESSIONS, true) ?? true;
   const hooksEnabled = adapter?.getSetting(KEY_HOOKS_ENABLED, true) ?? true;
   send({
     type: 'settingsLoaded',
