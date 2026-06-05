@@ -1,3 +1,4 @@
+import * as childProcess from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -93,14 +94,41 @@ function getSessionDirs(workspacePath: string): string[] {
   return [projectDir];
 }
 
+function resolveClaudePath(): string {
+  // Try to find claude via PATH-aware lookup first
+  try {
+    const result = childProcess.execSync('which claude', { encoding: 'utf-8' }).trim();
+    if (result) return result;
+  } catch {
+    /* fall through */
+  }
+  // Common install locations when shell PATH isn't available
+  const candidates = [
+    path.join(os.homedir(), '.local', 'bin', 'claude'),
+    path.join(os.homedir(), '.npm-global', 'bin', 'claude'),
+    '/usr/local/bin/claude',
+    '/usr/bin/claude',
+  ];
+  for (const p of candidates) {
+    try {
+      fs.accessSync(p, fs.constants.X_OK);
+      return p;
+    } catch {
+      /* try next */
+    }
+  }
+  return 'claude';
+}
+
 function buildLaunchCommand(
   sessionId: string,
   cwd: string,
   opts?: { bypassPermissions?: boolean },
 ): { command: string; args: string[]; env?: Record<string, string> } {
+  const command = resolveClaudePath();
   const args = ['--session-id', sessionId];
   if (opts?.bypassPermissions) args.push('--dangerously-skip-permissions');
-  return { command: 'claude', args, env: { PWD: cwd } };
+  return { command, args, env: { PWD: cwd } };
 }
 
 /** Root that holds every Claude session across all workspaces. Used by the
