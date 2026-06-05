@@ -149,8 +149,9 @@ export function useExtensionMessages(
           onLayoutLoaded?.(os.getLayout());
         }
         // Add buffered agents now that layout (and seats) are correct
+        // Restored/existing agents default to idle (isActive=false); tool events will activate them
         for (const p of pendingAgents) {
-          os.addAgent(p.id, p.palette, p.hueShift, p.seatId, true, p.folderName);
+          os.addAgent(p.id, p.palette, p.hueShift, p.seatId, true, p.folderName, false);
         }
         pendingAgents = [];
         layoutReadyRef.current = true;
@@ -179,7 +180,7 @@ export function useExtensionMessages(
           const parentCh = os.characters.get(teammateParentId);
           const palette = parentCh ? parentCh.palette : undefined;
           const hueShift = parentCh ? parentCh.hueShift : undefined;
-          os.addAgent(id, palette, hueShift, undefined, undefined, parentCh?.folderName);
+          os.addAgent(id, palette, hueShift, undefined, undefined, parentCh?.folderName, true);
           // Set team metadata on the character
           const ch = os.characters.get(id);
           if (ch) {
@@ -188,7 +189,8 @@ export function useExtensionMessages(
             ch.agentName = teammateName;
           }
         } else {
-          os.addAgent(id, undefined, undefined, undefined, undefined, folderName);
+          // New agent: start idle, will activate when tool events arrive
+          os.addAgent(id, undefined, undefined, undefined, undefined, folderName, false);
         }
         saveAgentSeats(os);
       } else if (msg.type === 'agentClosed') {
@@ -229,7 +231,7 @@ export function useExtensionMessages(
           for (const id of incoming) {
             const m = meta[id];
             if (!os.hasAgent(id)) {
-              os.addAgent(id, m?.palette, m?.hueShift, m?.seatId, true, folderNames[id]);
+              os.addAgent(id, m?.palette, m?.hueShift, m?.seatId, true, folderNames[id], false);
             }
           }
         } else {

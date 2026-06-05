@@ -51,6 +51,7 @@ export function createCharacter(
   seatId: string | null,
   seat: Seat | null,
   hueShift = 0,
+  isActive = false,
 ): Character {
   const col = seat ? seat.seatCol : 1;
   const row = seat ? seat.seatRow : 1;
@@ -73,11 +74,12 @@ export function createCharacter(
     wanderTimer: 0,
     wanderCount: 0,
     wanderLimit: randomInt(WANDER_MOVES_BEFORE_REST_MIN, WANDER_MOVES_BEFORE_REST_MAX),
-    isActive: true,
+    isActive,
     seatId,
     bubbleType: null,
     bubbleTimer: 0,
-    seatTimer: 0,
+    // seatTimer = -1 sentinel: skip long seat rest on first arrival, go idle quickly
+    seatTimer: isActive ? 0 : -1,
     isSubagent: false,
     parentAgentId: null,
     matrixEffect: null,
