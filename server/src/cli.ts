@@ -138,7 +138,7 @@ async function main(): Promise<void> {
 
     // Sync runtime refs with persisted settings BEFORE first scan tick
     runtime.hooksEnabled.current = adapter.getSetting('pixel-agents.hooksEnabled', true);
-    runtime.watchAllSessions.current = adapter.getSetting('pixel-agents.watchAllSessions', false);
+    runtime.watchAllSessions.current = adapter.getSetting('pixel-agents.watchAllSessions', true);
 
     // Install hooks on startup if the persisted setting says so
     if (runtime.hooksEnabled.current) {
@@ -152,16 +152,20 @@ async function main(): Promise<void> {
     }
 
     // Start scanning for external sessions (Claude running in user's terminal)
-    const cwd = args.workspace;
+    const cwd = args.workspace ?? process.cwd();
     console.log(`[Pixel Agents] Workspace: ${cwd}`);
     const dirs = claudeProvider.getSessionDirs?.(cwd);
-    if (dirs && dirs[0]) {
-      const projectDir = dirs[0];
+    const projectDir = dirs?.[0];
+    if (projectDir) {
       console.log(`[Pixel Agents] Scanning project dir: ${projectDir}`);
       runtime.startProjectScan(projectDir);
       runtime.startExternalScanning(projectDir);
-      runtime.startStaleCheck();
+    } else {
+      // No workspace-specific project dir — still start global scanner so
+      // Watch All Sessions can discover sessions from any project.
+      runtime.startExternalScanning(cwd);
     }
+    runtime.startStaleCheck();
 
     const url = `http://127.0.0.1:${config.port}`;
     console.log(`\n  Pixel Agents server running at ${url}\n`);
