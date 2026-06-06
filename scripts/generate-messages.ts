@@ -24,8 +24,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const REPO_ROOT = path.resolve(__dirname, '..');
-const YAML_PATH = path.join(REPO_ROOT, 'core', 'asyncapi.yaml');
-const OUTPUT_PATH = path.join(REPO_ROOT, 'core', 'src', 'messages.ts');
+const YAML_PATH = path.join(REPO_ROOT, 'packages', 'core', 'asyncapi.yaml');
+const OUTPUT_PATH = path.join(REPO_ROOT, 'packages', 'core', 'src', 'messages.ts');
 
 const HEADER = `/**
  * AUTO-GENERATED FROM core/asyncapi.yaml. DO NOT EDIT MANUALLY.

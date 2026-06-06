@@ -14,21 +14,27 @@ const versionDefine = {
 };
 
 /**
+ * esbuild alias map: resolves @pixel-agents/* package names to source directories.
+ * This mirrors the tsconfig `paths` so both type-checking and bundling agree.
+ */
+const packageAlias = {
+  '@pixel-agents/core': path.join(__dirname, 'packages', 'core', 'src'),
+  '@pixel-agents/server': path.join(__dirname, 'packages', 'server', 'src'),
+};
+
+/**
  * Copy assets folder to dist/assets
  */
 function copyAssets() {
-  const srcDir = path.join(__dirname, 'webview-ui', 'public', 'assets');
+  const srcDir = path.join(__dirname, 'packages', 'client', 'public', 'assets');
   const dstDir = path.join(__dirname, 'dist', 'assets');
 
   if (fs.existsSync(srcDir)) {
-    // Remove existing dist/assets if present
     if (fs.existsSync(dstDir)) {
       fs.rmSync(dstDir, { recursive: true });
     }
-
-    // Copy recursively
     fs.cpSync(srcDir, dstDir, { recursive: true });
-    console.log('✓ Copied assets/ → dist/assets/');
+    console.log('✓ Copied packages/client/public/assets/ → dist/assets/');
   } else {
     console.log('ℹ️  assets/ folder not found (optional)');
   }
@@ -41,6 +47,7 @@ function copyAssets() {
 function buildHooks() {
   const entry = path.join(
     __dirname,
+    'packages',
     'server',
     'src',
     'providers',
@@ -58,6 +65,7 @@ function buildHooks() {
     format: 'cjs',
     outdir: path.join(__dirname, 'dist', 'hooks'),
     banner: { js: '#!/usr/bin/env node' },
+    alias: packageAlias,
   });
   console.log('✓ Built hooks/ → dist/hooks/');
 }
@@ -84,7 +92,7 @@ const esbuildProblemMatcherPlugin = {
 
 async function main() {
   const ctx = await esbuild.context({
-    entryPoints: ['adapters/vscode/extension.ts'],
+    entryPoints: ['packages/vscode/extension.ts'],
     bundle: true,
     format: 'cjs',
     minify: production,
@@ -94,18 +102,15 @@ async function main() {
     outfile: 'dist/extension.js',
     external: ['vscode'],
     define: versionDefine,
+    alias: packageAlias,
     logLevel: 'silent',
-    plugins: [
-      /* add to the end of plugins array */
-      esbuildProblemMatcherPlugin,
-    ],
+    plugins: [esbuildProblemMatcherPlugin],
   });
   if (watch) {
     await ctx.watch();
   } else {
     await ctx.rebuild();
     await ctx.dispose();
-    // Copy assets and hooks after build
     copyAssets();
     buildHooks();
     await buildCli();
@@ -115,7 +120,7 @@ async function main() {
 /** Bundle the standalone CLI entry point. */
 async function buildCli() {
   await esbuild.build({
-    entryPoints: ['server/src/cli.ts'],
+    entryPoints: ['packages/server/src/cli.ts'],
     bundle: true,
     format: 'cjs',
     minify: production,
@@ -124,10 +129,11 @@ async function buildCli() {
     outfile: 'dist/cli.js',
     external: ['fastify', '@fastify/websocket', '@fastify/static', '@fastify/cors'],
     define: versionDefine,
+    alias: packageAlias,
     logLevel: 'silent',
   });
   if (!production) {
-    console.log('[build] CLI bundled: dist/cli.mjs');
+    console.log('[build] CLI bundled: dist/cli.js');
   }
 }
 

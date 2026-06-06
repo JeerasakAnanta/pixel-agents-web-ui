@@ -12,16 +12,22 @@
 		"noUnusedLocals": true,
 		"noUnusedParameters": true,
 		"allowUnreachableCode": false,
-		"noFallthroughCasesInSwitch": true
+		"noFallthroughCasesInSwitch": true,
+		"paths": {
+			"@pixel-agents/core": ["./packages/core/src/index.ts"],
+			"@pixel-agents/core/*": ["./packages/core/src/*"],
+			"@pixel-agents/server": ["./packages/server/src/index.ts"],
+			"@pixel-agents/server/*": ["./packages/server/src/*"]
+		}
 	},
 	"include": [
-		"adapters/vscode",
-		"server/src",
-		"core/src"
+		"packages/vscode",
+		"packages/server/src",
+		"packages/core/src"
 	],
 	"exclude": [
 		"node_modules",
-		"webview-ui",
+		"packages/client",
 		"dist",
 		"out",
 		"scripts"
