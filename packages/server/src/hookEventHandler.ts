@@ -3,6 +3,7 @@ import * as path from 'path';
 
 import type { AgentStateStore } from './agentStateStore.js';
 import { SESSION_END_GRACE_MS } from './constants.js';
+import { debug, isDebug, log, warn } from './logger.js';
 import type { SessionRouter } from './sessionRouter.js';
 import type { TeamHookContext, TeamHookEvent } from './teamHookHandler.js';
 import {
@@ -15,8 +16,6 @@ import {
 import { hasInlineTeammates } from './teamUtils.js';
 import { cancelPermissionTimer, cancelWaitingTimer } from './timerManager.js';
 import type { AgentState } from './types.js';
-
-const debug = process.env.PIXEL_AGENTS_DEBUG !== '0';
 
 /** Normalized hook event received from any provider's hook script via the HTTP server. */
 export interface HookEvent {
@@ -62,7 +61,7 @@ export class HookEventHandler {
     private watchAllSessionsRef?: { current: boolean },
   ) {
     if (provider.protocolVersion !== HookEventHandler.SUPPORTED_PROTOCOL_VERSION) {
-      console.warn(
+      warn(
         `[Pixel Agents] HookProvider "${provider.id}" reports protocolVersion=${provider.protocolVersion}, ` +
           `but handler understands ${HookEventHandler.SUPPORTED_PROTOCOL_VERSION}. ` +
           `Events from this provider will be dropped.`,
@@ -95,8 +94,8 @@ export class HookEventHandler {
 
   registerAgent(sessionId: string, agentId: number): void {
     const flushed = this.sessionRouter.register(sessionId, agentId);
-    if (debug && flushed.length > 0)
-      console.log(
+    if (isDebug() && flushed.length > 0)
+      debug(
         `[Pixel Agents] Hook: flushing ${flushed.length} buffered event(s) for session ${sessionId.slice(0, 8)}...`,
       );
     for (const { providerId, event } of flushed) {
@@ -123,8 +122,8 @@ export class HookEventHandler {
       const transcriptPath = normEvent.transcriptPath;
       const cwd = normEvent.cwd;
       const tracked = this.isTrackedSession(transcriptPath, cwd);
-      if (debug && tracked)
-        console.log(`[Pixel Agents] Hook: SessionStart(source=${source}, session=${sid}...)`);
+      if (isDebug() && tracked)
+        debug(`[Pixel Agents] Hook: SessionStart(source=${source}, session=${sid}...)`);
 
       const existingAgentId = this.sessionRouter.resolve(event.session_id);
       if (existingAgentId !== undefined) {
@@ -136,10 +135,9 @@ export class HookEventHandler {
             this.agents.broadcast({ type: 'agentStatus', id: existingAgentId, status: 'waiting' });
           }
         }
-        if (debug)
-          console.log(
-            `[Pixel Agents] Hook: Agent ${existingAgentId} - SessionStart(source=${source}) known`,
-          );
+        debug(
+          `[Pixel Agents] Hook: Agent ${existingAgentId} - SessionStart(source=${source}) known`,
+        );
         return;
       }
       for (const [id, agent] of this.agents) {
@@ -150,10 +148,9 @@ export class HookEventHandler {
             agent.isWaiting = true;
             this.agents.broadcast({ type: 'agentStatus', id, status: 'waiting' });
           }
-          if (debug)
-            console.log(
-              `[Pixel Agents] Hook: Agent ${id} - SessionStart(source=${source}) auto-discovered`,
-            );
+          debug(
+            `[Pixel Agents] Hook: Agent ${id} - SessionStart(source=${source}) auto-discovered`,
+          );
           return;
         }
       }
@@ -167,7 +164,7 @@ export class HookEventHandler {
                 path.resolve(projectDir).toLowerCase();
             if (isMatch) {
               agent.pendingClear = false;
-              console.log(
+              log(
                 `[Pixel Agents] Hook: Agent ${id} - /${normEvent.source} detected, reassigning to ${event.session_id}`,
               );
               this.sessionRouter.unregister(agent.sessionId);
@@ -182,8 +179,8 @@ export class HookEventHandler {
         if (normEvent.source === 'resume' && transcriptPath) {
           this.lifecycleCallbacks.onSessionResume?.(transcriptPath);
         }
-        if (debug && tracked)
-          console.log(
+        if (isDebug() && tracked)
+          debug(
             `[Pixel Agents] Hook: SessionStart(source=${source}) -> pending external session ${sid}..., awaiting confirmation`,
           );
         this.sessionRouter.storePending(event.session_id, {
@@ -192,8 +189,8 @@ export class HookEventHandler {
           cwd: cwd ?? '',
         });
       } else {
-        if (debug && tracked)
-          console.log(
+        if (isDebug() && tracked)
+          debug(
             `[Pixel Agents] Hook: SessionStart -> unknown session ${sid}..., no transcript_path`,
           );
       }
@@ -202,19 +199,17 @@ export class HookEventHandler {
 
     if (normEvent.kind === 'sessionEnd' && this.sessionRouter.hasPending(event.session_id)) {
       this.sessionRouter.discardPending(event.session_id);
-      if (debug)
-        console.log(
-          `[Pixel Agents] Hook: SessionEnd discarded pending external session ${event.session_id.slice(0, 8)}...`,
-        );
+      debug(
+        `[Pixel Agents] Hook: SessionEnd discarded pending external session ${event.session_id.slice(0, 8)}...`,
+      );
       return;
     }
 
     const pending = this.sessionRouter.confirmPending(event.session_id);
     if (pending) {
-      if (debug)
-        console.log(
-          `[Pixel Agents] Hook: ${eventName} confirmed external session ${event.session_id.slice(0, 8)}..., creating agent`,
-        );
+      log(
+        `[Pixel Agents] Hook: ${eventName} confirmed external session ${event.session_id.slice(0, 8)}..., creating agent`,
+      );
       this.lifecycleCallbacks.onExternalSessionDetected?.(
         pending.sessionId,
         pending.transcriptPath,
@@ -241,10 +236,9 @@ export class HookEventHandler {
         (a) => a.sessionId && !this.sessionRouter.hasSession(a.sessionId),
       );
       if (isPending || hasBuffered || hasUnregisteredAgents) {
-        if (debug)
-          console.log(
-            `[Pixel Agents] Hook: ${eventName} - unknown session ${event.session_id.slice(0, 8)}..., buffering`,
-          );
+        debug(
+          `[Pixel Agents] Hook: ${eventName} - unknown session ${event.session_id.slice(0, 8)}..., buffering`,
+        );
         this.sessionRouter.bufferEvent(_providerId, event);
       }
       return;
@@ -254,10 +248,9 @@ export class HookEventHandler {
     if (!agent) return;
 
     agent.hookDelivered = true;
-    if (debug)
-      console.log(
-        `[Pixel Agents] Hook: Agent ${agentId} - ${eventName} (session=${event.session_id.slice(0, 8)}...)`,
-      );
+    debug(
+      `[Pixel Agents] Hook: Agent ${agentId} - ${eventName} (session=${event.session_id.slice(0, 8)}...)`,
+    );
 
     switch (normEvent.kind) {
       case 'sessionEnd':
@@ -307,20 +300,16 @@ export class HookEventHandler {
     agentId: number,
   ): void {
     const reason = normEvent.reason;
-    if (debug)
-      console.log(
-        `[Pixel Agents] Hook: Agent ${agentId} - SessionEnd(reason=${reason ?? 'unknown'})`,
-      );
+    debug(`[Pixel Agents] Hook: Agent ${agentId} - SessionEnd(reason=${reason ?? 'unknown'})`);
 
     const expectsFollowUp = reason === 'clear' || reason === 'resume';
 
     if (expectsFollowUp) {
       agent.pendingClear = true;
       this.markAgentWaiting(agent, agentId);
-      if (debug)
-        console.log(
-          `[Pixel Agents] Hook: Agent ${agentId} - SessionEnd(reason=${reason}), awaiting possible SessionStart`,
-        );
+      debug(
+        `[Pixel Agents] Hook: Agent ${agentId} - SessionEnd(reason=${reason}), awaiting possible SessionStart`,
+      );
       setTimeout(() => {
         if (agent.pendingClear) {
           agent.pendingClear = false;

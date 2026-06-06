@@ -9,6 +9,7 @@
 import type { HookProvider } from '@pixel-agents/core/provider.js';
 
 import type { AgentStateStore } from './agentStateStore.js';
+import { debug, isDebug } from './logger.js';
 import { getInlineTeammates } from './teamUtils.js';
 import { cancelPermissionTimer } from './timerManager.js';
 import type { AgentState } from './types.js';
@@ -37,8 +38,6 @@ export interface TeamHookContext {
   getSubagentToolSet: () => ReadonlySet<string>;
 }
 
-const debug = process.env.PIXEL_AGENTS_DEBUG !== '0';
-
 /**
  * Handle SubagentStart: route between teammate spawn and basic within-turn subagent.
  *
@@ -56,8 +55,8 @@ export function handleSubagentStart(
   const agentType = ctx.provider.team?.extractTeammateNameFromEvent(event) ?? 'unknown';
 
   if (ctx.provider.team && agent.currentHookIsTeammateSpawn === true && agent.teamName) {
-    if (debug)
-      console.log(
+    if (isDebug())
+      debug(
         `[Pixel Agents] Hook: Agent ${agentId} - SubagentStart: teammate "${agentType}" detected, triggering discovery`,
       );
     ctx.lifecycleCallbacks.onTeammateDetected?.(agentId, event.session_id, agentType);
@@ -109,8 +108,8 @@ export function handleSubagentStart(
 export function handleSubagentStop(agent: AgentState, agentId: number, ctx: TeamHookContext): void {
   const inlineTeammates = getInlineTeammates(agentId, ctx.agents);
   if (inlineTeammates.length > 0) {
-    if (debug)
-      console.log(
+    if (isDebug())
+      debug(
         `[Pixel Agents] Hook: Agent ${agentId} - SubagentStop: marking inline teammates as waiting`,
       );
     for (const [id, a] of inlineTeammates) {
@@ -180,15 +179,15 @@ export function handleTeammateIdle(
     const match = inlineTeammates.find(([, a]) => a.agentName === agentType);
     if (match) {
       const [id, a] = match;
-      if (debug)
-        console.log(`[Pixel Agents] Hook: TeammateIdle "${agentType}" -> teammate Agent ${id}`);
+      if (isDebug())
+        debug(`[Pixel Agents] Hook: TeammateIdle "${agentType}" -> teammate Agent ${id}`);
       ctx.markAgentWaiting(a, id);
       return;
     }
   }
 
-  if (debug)
-    console.log(
+  if (isDebug())
+    debug(
       `[Pixel Agents] Hook: TeammateIdle (no agent_type match) -> marking ${inlineTeammates.length} teammate(s) waiting`,
     );
   for (const [id, a] of inlineTeammates) {
@@ -207,8 +206,8 @@ export function handleTaskCompleted(
 ): void {
   const subject = (event.subject as string) ?? '';
   const agentType = ctx.provider.team?.extractTeammateNameFromEvent(event);
-  if (debug)
-    console.log(
+  if (isDebug())
+    debug(
       `[Pixel Agents] Hook: Agent ${agentId} - TaskCompleted: ${subject}${agentType ? ` (agent_type=${agentType})` : ''}`,
     );
 

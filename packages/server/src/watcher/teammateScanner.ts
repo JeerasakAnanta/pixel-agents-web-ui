@@ -6,11 +6,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import type { AgentStateStore } from '../agentStateStore.js';
+import { debug, isDebug, log } from '../logger.js';
 import type { AgentState } from '../types.js';
 import { makeAgentState, readNewLines, startFileWatching } from './jsonlPoller.js';
 import { getTeamProvider, knownTeammateFiles } from './state.js';
-
-const debug = process.env.PIXEL_AGENTS_DEBUG !== '0';
 
 export function scanForTeammateFiles(
   projectDir: string,
@@ -53,8 +52,8 @@ export function scanForTeammateFiles(
       }
     }
     if (existingTeammate) {
-      if (debug)
-        console.log(
+      if (isDebug())
+        debug(
           `[Pixel Agents] Teammate "${teammateName}" already exists (Agent ${existingTeammate.id}), reassigning to ${path.basename(file)}`,
         );
       const oldTimer = pollingTimers.get(existingTeammate.id);
@@ -92,7 +91,7 @@ export function scanForTeammateFiles(
     agents.set(id, agent);
     persistAgents();
 
-    console.log(
+    log(
       `[Pixel Agents] Teammate detected: "${teammateName}" (Agent ${id}) for parent Agent ${parentAgentId} (${path.basename(file)})`,
     );
 

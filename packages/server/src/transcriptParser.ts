@@ -1,9 +1,8 @@
-const debug = process.env.PIXEL_AGENTS_DEBUG !== '0';
-
 import type { HookProvider } from '@pixel-agents/core/provider.js';
 
 import type { AgentStateStore } from './agentStateStore.js';
 import { TEXT_IDLE_DELAY_MS, TOOL_DONE_DELAY_MS } from './constants.js';
+import { debug, isDebug, log, warn } from './logger.js';
 import {
   cancelPermissionTimer,
   cancelWaitingTimer,
@@ -65,8 +64,8 @@ export function processTranscriptLine(
       agent.agentName = teamMeta.agentName;
       agent.isTeamLead = undefined;
       agent.leadAgentId = undefined;
-      if (debug) {
-        console.log(
+      if (isDebug()) {
+        debug(
           `[Pixel Agents] Agent ${agentId} team metadata: team=${agent.teamName}, role=${agent.agentName ?? 'lead'}`,
         );
       }
@@ -125,9 +124,7 @@ export function processTranscriptLine(
           if (block.type === 'tool_use' && block.id) {
             const toolName = block.name || '';
             const status = formatToolStatus(toolName, block.input || {});
-            console.log(
-              `[Pixel Agents] JSONL: Agent ${agentId} - tool start: ${block.id} ${status}`,
-            );
+            debug(`[Pixel Agents] JSONL: Agent ${agentId} - tool start: ${block.id} ${status}`);
             agent.activeToolIds.add(block.id);
             agent.activeToolStatuses.set(block.id, status);
             agent.activeToolNames.set(block.id, toolName);
@@ -194,7 +191,7 @@ export function processTranscriptLine(
       }
     } else if (record.type === 'assistant' && assistantContent === undefined) {
       // Assistant record with no recognizable content structure
-      console.warn(
+      warn(
         `[Pixel Agents] Agent ${agentId}: assistant record has no content. Keys: ${Object.keys(record).join(', ')}`,
       );
     } else if (record.type === 'progress') {
@@ -212,16 +209,14 @@ export function processTranscriptLine(
 
               // Detect background agent launches — keep the tool alive until queue-operation
               if (isSubagentTool(completedToolName) && isAsyncAgentResult(block)) {
-                console.log(
+                log(
                   `[Pixel Agents] Agent ${agentId} background agent launched: ${completedToolId}`,
                 );
                 agent.backgroundAgentToolIds.add(completedToolId);
                 continue; // don't mark as done yet
               }
 
-              console.log(
-                `[Pixel Agents] JSONL: Agent ${agentId} - tool done: ${block.tool_use_id}`,
-              );
+              debug(`[Pixel Agents] JSONL: Agent ${agentId} - tool done: ${block.tool_use_id}`);
               // If the completed tool spawned a subagent, clear its subagent tools
               if (isSubagentTool(completedToolName)) {
                 agent.activeSubagentToolIds.delete(completedToolId);
@@ -276,9 +271,7 @@ export function processTranscriptLine(
         if (toolIdMatch) {
           const completedToolId = toolIdMatch[1];
           if (agent.backgroundAgentToolIds.has(completedToolId)) {
-            console.log(
-              `[Pixel Agents] Agent ${agentId} background agent done: ${completedToolId}`,
-            );
+            log(`[Pixel Agents] Agent ${agentId} background agent done: ${completedToolId}`);
             agent.backgroundAgentToolIds.delete(completedToolId);
             agent.activeSubagentToolIds.delete(completedToolId);
             agent.activeSubagentToolNames.delete(completedToolId);
@@ -368,8 +361,8 @@ export function processTranscriptLine(
       const knownSkippableTypes = new Set(['file-history-snapshot', 'system', 'queue-operation']);
       if (!knownSkippableTypes.has(record.type)) {
         agent.seenUnknownRecordTypes.add(record.type);
-        if (debug) {
-          console.log(
+        if (isDebug()) {
+          debug(
             `[Pixel Agents] JSONL: Agent ${agentId} - unrecognized record type '${record.type}'. ` +
               `Keys: ${Object.keys(record).join(', ')}`,
           );
@@ -426,7 +419,7 @@ function processProgressRecord(
       if (block.type === 'tool_use' && block.id) {
         const toolName = block.name || '';
         const status = formatToolStatus(toolName, block.input || {});
-        console.log(
+        debug(
           `[Pixel Agents] Agent ${agentId} subagent tool start: ${block.id} ${status} (parent: ${parentToolId})`,
         );
 
@@ -465,7 +458,7 @@ function processProgressRecord(
   } else if (msgType === 'user') {
     for (const block of content) {
       if (block.type === 'tool_result' && block.tool_use_id) {
-        console.log(
+        debug(
           `[Pixel Agents] Agent ${agentId} subagent tool done: ${block.tool_use_id} (parent: ${parentToolId})`,
         );
 
