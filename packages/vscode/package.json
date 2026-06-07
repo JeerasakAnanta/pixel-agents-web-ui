@@ -1,0 +1,10 @@
+{
+  "name": "@pixel-agents/vscode",
+  "version": "1.3.0",
+  "private": true,
+  "description": "VS Code extension adapter — thin bridge between postMessage and InProcessBridge",
+  "dependencies": {
+    "@pixel-agents/core": "workspace:*",
+    "@pixel-agents/server": "workspace:*"
+  }
+}
